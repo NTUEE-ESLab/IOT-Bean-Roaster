@@ -1,224 +1,61 @@
 <html>
 
-	<head>
-		<title>Test Graph</title>
-		<script src="./js/Chart.min.js"></script>
-		<script src="./js/utils.js"></script>
-	</head>
+<head>
+    <title>歷史曲線總覽</title>
+    <script src="./js/jquery.min.js"></script>
+    <script src="./nanogallery_dist/jquery.nanogallery2.min.js"></script>
+    <link href="./nanogallery_dist/css/nanogallery2.min.css" rel="stylesheet" type="text/css">
+    <script src="./js/view.js"></script>
+    <style>
+        #cent {
+            background-color: white;
+            position: absolute;
+            width: 85%;
+            height: 85%;
+            padding: 30px;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: auto;
+        }
+
+        body {
+            background-color: beige
+        }
+
+        #cent_title {
+            text-align: center;
+        }
+        #btn_nav_zone{
+	text-align:right;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+    </style>
+</head>
+
 
 <body>
-	<div style="width:75%;"><div class="chartjs-size-monitor"><div class="chartjs-size-monitor-expand"><div class=""></div></div><div class="chartjs-size-monitor-shrink"><div class=""></div></div></div>
-		<canvas id="canvas" style="display: block; height: 315px; width: 631px;" width="1262" height="630" class="chartjs-render-monitor"></canvas>
-	</div>
-	<br>
-	<br>
-	<button id="randomizeData">Randomize Data</button>
-	<button id="addDataset">Add Dataset</button>
-	<button id="removeDataset">Remove Dataset</button>
-	<button id="addData">Add Data</button>
-	<button id="removeData">Remove Data</button>
-	<script>
-		var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-		var config = {
-			type: 'line',
-			data: {
-				labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-				datasets: [{
-					label: 'My First dataset',
-					backgroundColor: window.chartColors.red,
-					borderColor: window.chartColors.red,
-					data: [
-						randomScalingFactor(),
-						randomScalingFactor(),
-						randomScalingFactor(),
-						randomScalingFactor(),
-						randomScalingFactor(),
-						randomScalingFactor(),
-						randomScalingFactor()
-					],
-					fill: false,
-				} ]
-			},
-			options: {
-				responsive: true,
-				title: {
-					display: true,
-					text: 'Chart.js Line Chart'
-				},
-				tooltips: {
-					mode: 'index',
-					intersect: false,
-				},
-				hover: {
-					mode: 'nearest',
-					intersect: true
-				},
-				scales: {
-					xAxes: [{
-						display: true,
-						scaleLabel: {
-							display: true,
-							labelString: 'Month'
-						}
-					}],
-					yAxes: [{
-						display: true,
-						scaleLabel: {
-							display: true,
-							labelString: 'Value'
-						}
-					}]
-				}
-			}
-		};
+    <!-- <div id="my_nanogallery2" data-nanogallery2 = '{
 
-		window.onload = function() {
-			var ctx = document.getElementById('canvas').getContext('2d');
-			window.myLine = new Chart(ctx, config);
-		};
+                "thumbnailHeight":  150,
+                "thumbnailWidth":   150,
+                "itemsBaseURL":     "https://nanogallery2.nanostudio.org/samples/"
+            }'>
 
-		document.getElementById('randomizeData').addEventListener('click', function() {
-			config.data.datasets.forEach(function(dataset) {
-				dataset.data = dataset.data.map(function() {
-					return randomScalingFactor();
-				});
-
-			});
-
-			window.myLine.update();
-		});
-
-		var colorNames = Object.keys(window.chartColors);
-		document.getElementById('addDataset').addEventListener('click', function() {
-			var colorName = colorNames[config.data.datasets.length % colorNames.length];
-			var newColor = window.chartColors[colorName];
-			var newDataset = {
-				label: 'Dataset ' + config.data.datasets.length,
-				backgroundColor: newColor,
-				borderColor: newColor,
-				data: [],
-				fill: false
-			};
-
-			for (var index = 0; index < config.data.labels.length; ++index) {
-				newDataset.data.push(randomScalingFactor());
-			}
-
-			config.data.datasets.push(newDataset);
-			window.myLine.update();
-		});
-
-		document.getElementById('addData').addEventListener('click', function() {
-			if (config.data.datasets.length > 0) {
-				var month = MONTHS[config.data.labels.length % MONTHS.length];
-				config.data.labels.push(month);
-
-				config.data.datasets.forEach(function(dataset) {
-					dataset.data.push(randomScalingFactor());
-				});
-
-				window.myLine.update();
-			}
-		});
-
-		document.getElementById('removeDataset').addEventListener('click', function() {
-			config.data.datasets.splice(0, 1);
-			window.myLine.update();
-		});
-
-		document.getElementById('removeData').addEventListener('click', function() {
-			config.data.labels.splice(-1, 1); // remove the label first
-
-			config.data.datasets.forEach(function(dataset) {
-				dataset.data.pop();
-			});
-
-			window.myLine.update();
-		});
-
-
-	ws = new WebSocket("ws://192.168.0.40:8866")
-    //ws = new WebSocket("ws://192.168.11.65:12345/send_graph")
-    var request_data_interval
-
-	var dps_xy = [];
-    var dps_xz = [];
-    var dps_yz = [];
-    var dataLength = 30;
-    var chart
-
-    ws.onopen = function()
-    {
-        // Web Socket is connected, send data using send()
-        ws.send("Message to send");
         
-		
-		
-		
-		
-		// 500 : millsec
-        request_data_interval = window.setInterval(requestData, 100);
-
-    };
-		
-    ws.onmessage = function (evt) 
-    { 
-		const dataLength = 100
-        var received_msg = evt.data;
-        //console.log(received_msg)
-        data = JSON.parse(evt.data);
-		//console.log(data)
-		console.log(data)
-		if (config.data.datasets.length > 0) {
-				var month = MONTHS[config.data.labels.length % MONTHS.length];
-				config.data.labels.push(month);
-
-				config.data.datasets.forEach(function(dataset) {
-					dataset.data.push(data.x*10);
-					
-				});
-				if (config.data.datasets[0].data.length > dataLength) {
-					config.data.datasets.forEach(function(dataset) {
-						dataset.data.shift();
-					});
-					config.data.labels.shift();
-				}
-				window.myLine.update();
-		}
-
-		// dps_xy.push({x: data.x, y:data.y})
-        // dps_xz.push({x: data.x, y:data.z})
-        // dps_yz.push({x: data.y, y:data.z})
-        
-        // if (dps_xy.length > dataLength) {
-        //     dps_xy.shift();
-        //     dps_xz.shift();
-        //     dps_yz.shift();
-        // }
-		
-		// chart_xy.render();
-        // chart_xz.render();
-		// chart_yz.render();
-
-		
-    };
-		
-    ws.onclose = function()
-    { 
-      // websocket is closed.
-      window.clearInterval(request_data_interval)
-    };
-    
-    function requestData()
-    {
-        ws.send("get-data");
-    }
-
-
-	</script>
-
+            <a href="img/coffee.jpg" data-ngthumb="img/coffee.jpg">Title Image 1</a>
+            <a href="img/coffee.jpg" data-ngthumb="img/coffee.jpg">Title Image 2</a>
+            <a href="img/coffee.jpg" data-ngthumb="img/coffee.jpg">Title Image 3</a>
+    </div> -->
+    <div id="cent">
+        <h2 id="cent_title">Curves database</h2>
+        <div id="btn_nav_zone">
+            <a href="monitor.html">Create or Monitor</a>
+        </div>
+        <div id="my_nanogallery2"></div>
+    </div>
 
 
 </body>
-
-</html>

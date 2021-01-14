@@ -1,0 +1,291 @@
+<html>
+
+	<head>
+		<title>Test Graph</title>
+		<script src="./js/Chart.min.js"></script>
+		<script src="./js/utils.js"></script>
+		<style>
+			
+			#cent {
+				background-color:white;
+  position: absolute;
+  width: 85%;
+  height: 85%;
+  padding: 30px;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+}
+body {
+	background-color: beige
+}
+#cent_title{
+	text-align: center;
+}
+#btn_zone{
+	text-align: center;
+}
+#btn_nav_zone{
+	text-align:right;
+    padding-top: 20px;
+    padding-bottom: 5px;
+}
+		</style>
+	</head>
+	
+<body>
+	<div id="cent">
+		<h2 id="cent_title">Realtime Curves</h2>
+		<div id="btn_nav_zone">
+			<div id = "machine_status"></div>
+            <a href="/">Go Back</a>
+        </div>
+		<canvas id="canvas" width="1500" height="630" ></canvas>
+
+		<!-- <div style="width:75%;"><div class="chartjs-size-monitor"><div class="chartjs-size-monitor-expand"><div class=""></div></div><div class="chartjs-size-monitor-shrink"><div class=""></div></div></div>
+			<canvas id="canvas" style="display: block; height: 315px; width: 631px;" width="1262" height="630" class="chartjs-render-monitor"></canvas>
+		</div> -->
+		<br/>
+
+		<div id="btn_zone">
+			<button id="btn_start_connect">Start Connect</button>
+			<button id="btn_stp_recv">Stop recieving</button>
+			<br/><br/>
+			Profile Name : <input id="profile_name" />
+			<button id="btn_save">Save</button>
+		</div>
+
+	
+	</div>
+	
+	
+	
+	<script>
+		let AllowRecv = 0;
+		let time_ticks = 0;
+		const queryString = window.location.search;
+		const urlParams = new URLSearchParams(queryString);
+		// console.log(urlParams);
+		
+		document.getElementById('btn_start_connect').addEventListener('click', function() {
+			time_ticks = 0;
+			config.data.datasets[0].data = [];
+			config.data.datasets[1].data = [];
+			config.data.datasets[2].data = [];
+			config.data.labels = [];
+			AllowRecv = 1;
+		});
+
+		document.getElementById('btn_stp_recv').addEventListener('click', function() {
+			AllowRecv = 0;
+		});
+
+		document.getElementById('btn_save').addEventListener('click', function() {
+			if (document.getElementById("profile_name").value === "")
+			{
+				alert("Please specify profile name to save!!")
+				return;
+			}
+			console.log("SAVE");
+			const dataToSend = JSON.stringify({
+				"temperature": config.data.datasets[0].data, 
+			"roast": config.data.datasets[1].data, 
+			"humidity": config.data.datasets[2].data,
+			"profile_name" : document.getElementById("profile_name").value
+			});
+			let dataReceived = ""; 
+			fetch("/saveData", {
+				credentials: "same-origin",
+				mode: "same-origin",
+				method: "post",
+				headers: { "Content-Type": "application/json" },
+				body: dataToSend
+			})
+				.then(resp => {
+					if (resp.status === 200) {
+						window.location.replace("/");
+						return resp.json()
+					} else {
+						console.log("Status: " + resp.status)
+						return Promise.reject("server")
+					}
+				})
+				.then(dataJson => {
+					dataReceived = JSON.parse(dataJson)
+				})
+				.catch(err => {
+					if (err === "server") return
+					console.log(err)
+				})
+
+			console.log(`Received: ${dataReceived}`)   
+
+
+		});
+        
+		var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+		
+		var config = {
+			type: 'line',
+			data: {
+				labels: [],
+				datasets: [{
+					label: 'Temperature',
+					backgroundColor: window.chartColors.red,
+					borderColor: window.chartColors.red,
+					data: [
+						
+					],
+					fill: false,
+				},{
+					label: 'Roast',
+					backgroundColor: window.chartColors.blue,
+					borderColor: window.chartColors.blue,
+					data: [
+						
+					],
+					fill: false,
+				},{
+					label: 'Humidity',
+					backgroundColor: window.chartColors.green,
+					borderColor: window.chartColors.green,
+					data: [
+						
+					],
+					fill: false,
+				} ]
+			},
+			options: {
+				responsive: true,
+				title: {
+					display: true,
+					text: 'Coffee Bean'
+				},
+				tooltips: {
+					mode: 'index',
+					intersect: false,
+				},
+				hover: {
+					mode: 'nearest',
+					intersect: true
+				},
+				scales: {
+					xAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Time Elapsed'
+						}
+					}],
+					yAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Value'
+						}
+					}]
+				}
+			}
+		};
+
+		window.onload = function() {
+			var ctx = document.getElementById('canvas').getContext('2d');
+			
+			window.myLine = new Chart(ctx, config);
+		};
+
+		
+		// ws = new WebSocket("ws://192.168.0.39:8866")
+		ws = new WebSocket("ws://127.0.0.1:8866")
+    //ws = new WebSocket("ws://192.168.11.65:12345/send_graph")
+    var request_data_interval
+
+	var dps_xy = [];
+    var dps_xz = [];
+    var dps_yz = [];
+    var dataLength = 30;
+    var chart
+
+    ws.onopen = function()
+    {
+		
+        // Web Socket is connected, send data using send()
+        ws.send("Message to send");
+        
+		// 500 : millsec
+        request_data_interval = window.setInterval(requestData, 1000);
+
+    };
+		
+    ws.onmessage = function (evt) 
+    { 
+		const dataLength = 50
+		var received_msg = evt.data;
+		document.getElementById("machine_status").innerText = "Alive";
+		if (!AllowRecv)
+		{
+			return;
+		}
+        //console.log(received_msg)
+        data = JSON.parse(evt.data);
+		//console.log(data)
+		console.log(data)
+		config.data.datasets[0].data.push(data.t)
+		config.data.datasets[1].data.push(data.r)
+		config.data.datasets[2].data.push(data.h)
+		config.data.labels.push(time_ticks);
+		++time_ticks;
+
+		if (config.data.datasets[0].data.length > dataLength)
+		{
+			config.data.datasets.forEach(function(dataset) {
+						dataset.data.shift();
+					});
+			config.data.labels.shift();
+		}
+
+		
+		window.myLine.update();
+		
+
+
+		
+    };
+		
+    ws.onclose = function()
+    { 
+      // websocket is closed.
+	  window.clearInterval(request_data_interval)
+	  document.getElementById("machine_status").innerText = "Disconnected";
+    };
+    
+    function requestData()
+    {
+		document.getElementById("machine_status").innerText = "Disconnected";
+        ws.send("get-data");
+    }
+
+		// if (config.data.datasets.length > 0) {
+		// 		var month = MONTHS[config.data.labels.length % MONTHS.length];
+		// 		config.data.labels.push(month);
+
+		// 		config.data.datasets.forEach(function(dataset) {
+		// 			dataset.data.push(data.x*10);
+					
+		// 		});
+		// 		if (config.data.datasets[0].data.length > dataLength) {
+		// 			config.data.datasets.forEach(function(dataset) {
+		// 				dataset.data.shift();
+		// 			});
+	
+  
+
+	</script>
+
+
+
+</body>
+
+</html>

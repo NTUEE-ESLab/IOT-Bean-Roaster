@@ -17,18 +17,21 @@
 
 
 #include "mbed.h"
+#include "HTS221.h"
+#include "max6675.h"
+#include "Roaster.h"
+
 #include "TCPSocket.h"
 #include "TCPServer.h"
-#include "stm32l475e_iot01_accelero.h"
+//#include "stm32l475e_iot01_accelero.h"
 
 
 #define WIFI_IDW0XX1    2
 
 #if (defined(TARGET_DISCO_L475VG_IOT01A) || defined(TARGET_DISCO_F413ZH))
 #include "ISM43362Interface.h"
-//ISM43362Interface wifi(MBED_CONF_ISM43362_WIFI_MOSI, MBED_CONF_APP_WIFI_SPI_MISO, MBED_CONF_APP_WIFI_SPI_SCLK, MBED_CONF_APP_WIFI_SPI_NSS, MBED_CONF_APP_WIFI_RESET, MBED_CONF_APP_WIFI_DATAREADY, MBED_CONF_APP_WIFI_WAKEUP, false);
+//ISM43362Interface wifi(MBED_CONF_APP_WIFI_SPI_MOSI, MBED_CONF_APP_WIFI_SPI_MISO, MBED_CONF_APP_WIFI_SPI_SCLK, MBED_CONF_APP_WIFI_SPI_NSS, MBED_CONF_APP_WIFI_RESET, MBED_CONF_APP_WIFI_DATAREADY, MBED_CONF_APP_WIFI_WAKEUP, false);
 ISM43362Interface wifi(false);
-
 #else // External WiFi modules
 
 #if MBED_CONF_APP_WIFI_SHIELD == WIFI_IDW0XX1
@@ -39,6 +42,13 @@ SpwfSAInterface wifi(MBED_CONF_APP_WIFI_TX, MBED_CONF_APP_WIFI_RX);
 #endif
 
 #define SCALE_MULTIPLIER    0.004
+
+
+
+//used by HTS
+    I2C i2c(PB_11, PB_10);
+HTS221 hts221; 
+
 
 
 const char *sec2str(nsapi_security_t sec)
@@ -91,7 +101,7 @@ void acc_server(NetworkInterface *net)
     TCPServer socket;
     TCPSocket* client;*/
     TCPSocket socket;
-    SocketAddress addr("192.168.0.40",65431);
+    SocketAddress addr("192.168.0.39",65431);
     nsapi_error_t response;
 
     int16_t pDataXYZ[3] = {0};
@@ -99,7 +109,11 @@ void acc_server(NetworkInterface *net)
     char acc_json[64];
     int sample_num = 0;
 
+//    Roaster roaster(PD_5,PD_6);
+
+    max6675 probe(D12, D13, D10);
     
+//    max6675 probe(PD_3, PD_1, PD_5);
 
     // Open a socket on the network interface, and create a TCP connection to addr
     response = socket.open(net);
@@ -116,22 +130,27 @@ void acc_server(NetworkInterface *net)
     socket.set_blocking(1);
     while (1){
         ++sample_num;
-        BSP_ACCELERO_AccGetXYZ(pDataXYZ);
-        float x = pDataXYZ[0]*SCALE_MULTIPLIER, y = pDataXYZ[1]*SCALE_MULTIPLIER, z = pDataXYZ[2]*SCALE_MULTIPLIER;
-        //int len = sprintf(acc_json,"{\"x\":%f,\"y\":%f,\"z\":%f,\"s\":%d}",(float)((int)(x*10000))/10000,
-//                                        (float)((int)(y*10000))/10000, (float)((int)(z*10000))/10000, sample_num);
-        int len = sprintf(acc_json,"{\"x\":%f,\"y\":%f,\"z\":%f,\"s\":%d}",(float)((int)(x*10000))/10000,
-                                        (float)((int)(y*10000))/10000, (float)((int)(z*10000))/10000, sample_num);
+        //BSP_ACCELERO_AccGetXYZ(pDataXYZ);
+        float x = 0.1, y = 0.3, z = 0.4;
+        int humid = hts221.readHumidity();
+        float temp = probe.gettemp(0);
+        printf("Humid=%d\n",humid);
+        printf("Temperature=%d\n",temp);
+        
+//        float roast_level = roaster.get_roast_level();
+        float roast_level = 0;
+        
+        printf("Roast=%d\n",roast_level);
+        
+        int len = sprintf(acc_json,"{\"h\":%f,\"t\":%f,\"r\":%f,\"s\":%d}",(float)humid,
+                                        temp, roast_level, sample_num);
 
 
-            
         response = socket.send(acc_json,len);
         if (0 >= response){
             printf("Error seding: %d\n", response);
-        }else{
-            printf("Message Sent\n", response);
         }
-        wait(0.1);
+        wait(0.9);
     
 
     }
@@ -142,6 +161,9 @@ void acc_server(NetworkInterface *net)
 
 int main()
 {
+    
+    int hts_ret = hts221.begin();
+    
 
     printf("\nConnecting to %s...\n", MBED_CONF_APP_WIFI_SSID);
     //wifi.set_network("192.168.130.105","255.255.255.0","192.168.130.254");
@@ -160,7 +182,7 @@ int main()
 
 
 
-    BSP_ACCELERO_Init();    
+    //BSP_ACCELERO_Init();    
 
 
     acc_server(&wifi);

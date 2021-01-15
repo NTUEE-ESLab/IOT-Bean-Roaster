@@ -2,40 +2,42 @@
 #include "mbed.h"
 
 
-Roaster::Roaster(PinName TX,PinName RX)
-:esp(TX, RX)
+Roaster::Roaster(PinName TX,PinName RX):esp(TX, RX)
 {
-    esp.set_baud(115200);
-    esp.set_format(
+    esp.baud(115200);
+    esp.format(
         8,
-        BufferedSerial::None,
+        SerialBase::None,
         1
     );
+    
+    
 }
 
-float Roaster::get_roast_level(){
+int Roaster::get_roast_level(){
 
     char msg[] = "-m\n";
-
-    esp.write(msg, sizeof(msg));
-
-    ThisThread::sleep_for("3s");
-
-    if(esp.readable()){
-        char buf[200] = {};
-        uint32_t rb = esp.read(buf,sizeof(buf));
-
-        if( rb >=4 ){
-            rl = atof(buf);
-        }
-
-    }
-
-
-    if(rl>150 || rl<0)return 0;
-    else
+    while (esp.readable())
     {
-        return rl;
+        esp.getc();
     }
+    printf(msg);
+    esp.printf(msg);
+//    esp.write(msg, sizeof(msg));
+    printf("msg sent");
+    
+   
+    
+
+    wait(3);
+    printf("Start read\n");
+
+        
+        char buf[200] = {};
+        buf[0] = esp.getc();
+   
+        
+        return (int)buf[0];
+//      
     
 }

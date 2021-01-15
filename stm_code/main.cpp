@@ -101,7 +101,7 @@ void acc_server(NetworkInterface *net)
     TCPServer socket;
     TCPSocket* client;*/
     TCPSocket socket;
-    SocketAddress addr("192.168.0.39",65431);
+    SocketAddress addr("192.168.43.30",65431);
     nsapi_error_t response;
 
     int16_t pDataXYZ[3] = {0};
@@ -109,7 +109,7 @@ void acc_server(NetworkInterface *net)
     char acc_json[64];
     int sample_num = 0;
 
-//    Roaster roaster(PD_5,PD_6);
+    Roaster roaster(PD_5,PD_6);
 
     max6675 probe(D12, D13, D10);
     
@@ -135,9 +135,10 @@ void acc_server(NetworkInterface *net)
         int humid = hts221.readHumidity();
         float temp = probe.gettemp(0);
         printf("Humid=%d\n",humid);
-        printf("Temperature=%d\n",temp);
+        printf("Temperature=%f\n",temp);
         
-//        float roast_level = roaster.get_roast_level();
+        //int roast_level = roaster.get_roast_level();
+        roaster.get_roast_level();
         float roast_level = 0;
         
         printf("Roast=%d\n",roast_level);
@@ -150,7 +151,7 @@ void acc_server(NetworkInterface *net)
         if (0 >= response){
             printf("Error seding: %d\n", response);
         }
-        wait(0.9);
+        wait(1);
     
 
     }
@@ -161,6 +162,7 @@ void acc_server(NetworkInterface *net)
 
 int main()
 {
+    
     
     int hts_ret = hts221.begin();
     

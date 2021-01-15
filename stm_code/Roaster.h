@@ -4,15 +4,19 @@
 
 #include "mbed.h"
 
+
 class Roaster {
 public:
     Roaster(PinName TX, PinName RX);
     // ~Roaster();
-    float get_roast_level();
-private:
+    int get_roast_level();
+ 
+    
 
-    float rl;
-    BufferedSerial esp;
+private:
+    
+    int rl;
+    Serial esp;
 
 };
 
